@@ -77,7 +77,7 @@ class CalendarWidget extends StatelessWidget {
     CalendarAppointmentDetails details,
   ) {
     final event =
-        details.appointments.first; // Assuming this is your Event model
+        details.appointments.first;
 
     return Consumer<SettingsProvider>(
       builder: (context, settingsProvider, child) {

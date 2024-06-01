@@ -10,7 +10,7 @@ class Event {
   final Color backgroundColor;
   final String effortLevel;
   final bool isAllDay;
-  final List<Tag> tags; // Keep this if you plan to load tags separately from the database
+  final List<Tag> tags;
 
   const Event({
     this.id,

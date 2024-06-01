@@ -83,7 +83,6 @@ class EventViewingPage extends StatelessWidget {
 
   // Complete the buildTagChips method to generate chips for each tag
   Widget buildTagChips(BuildContext context) {
-    // Assuming your Event class has a List<Tag> field for tags
     final tags = event.tags;
 
     return Wrap(

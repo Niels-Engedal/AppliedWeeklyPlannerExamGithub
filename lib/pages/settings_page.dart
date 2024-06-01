@@ -145,7 +145,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     7,
                     (index) => DropdownMenuItem<int>(
                           value: index +
-                              1, // Assuming 1 = Monday, 2 = Tuesday, etc.
+                              1,
                           child: Text([
                             'Monday',
                             'Tuesday',
@@ -201,7 +201,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _showEditTagsDialog(BuildContext context) async {
     final tagProvider = Provider.of<TagProvider>(context, listen: false);
     final tags = tagProvider
-        .tags; // Assuming you have a getter in your TagProvider for all tags
+        .tags;
 
     showDialog(
       context: context,

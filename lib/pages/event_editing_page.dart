@@ -308,7 +308,7 @@ Methods for building Editing Page
                 if (tagController.text.isNotEmpty) {
                   // Add the new tag through the TagProvider
                   await tagProvider.addTag(tagController.text, selectedColor);
-                  // Refresh your local tags list from the provider after adding
+                  // Refresh local tags list from the provider after adding
                   await tagProvider.loadTagsFromDatabase();
                   setState(() {
                     // Add the new tag to the selected tags list
@@ -335,8 +335,6 @@ Methods for building Editing Page
   Future<void> loadTags() async {
       final tagProvider = Provider.of<TagProvider>(context, listen: false);
       await tagProvider.loadTagsFromDatabase();
-    // This function's behavior should differ based on whether you're editing an existing event
-    // or creating a new one. For a new event, you might load all tags or no tags.
     if (widget.event != null) {
       // Editing an existing event
       List<Tag> eventTags = await tagProvider.fetchTagsForEvent(widget.event!.id!);

@@ -260,7 +260,6 @@ class DatabaseHelper {
   Future<void> updateTag(Tag tag) async {
     final db = await database;
     
-    // Assuming 'tags' table has 'id', 'text', and 'color' columns
     int result = await db.update(
       'tags',
       {
@@ -281,7 +280,7 @@ class DatabaseHelper {
     final db = await database;
 
     await db.delete(
-      'event_tags', // Assuming 'event_tags' is the name of your association table
+      'event_tags',
       where: 'event_id = ? AND tag_id = ?',
       whereArgs: [eventId, tagId],
     );

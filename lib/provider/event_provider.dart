@@ -52,7 +52,6 @@ class EventProvider extends ChangeNotifier{
 
   // Method to load events for selected date
   Future<void> loadEventsForSelectedDate() async {
-    // Assuming you have a method in DatabaseHelper to fetch events by date
     final List<Event> loadedEvents = await _dbHelper.getEventsForDate(_selectedDate);
     _events.clear();
     _events.addAll(loadedEvents);
@@ -162,7 +161,6 @@ class EventProvider extends ChangeNotifier{
     final db = await _dbHelper.database;
     // Delete event
     await db.delete('events', where: 'id = ?', whereArgs: [eventId]);
-    // Assuming CASCADE is not set, manually delete associations
     await db.delete('event_tags', where: 'event_id = ?', whereArgs: [eventId]);
     loadEvents();
     notifyListeners();
@@ -170,7 +168,7 @@ class EventProvider extends ChangeNotifier{
 
   // Method to delete all events
   Future<void> deleteAllEvents() async {
-    await _dbHelper.deleteAllEvents(); // Assuming this method is implemented in DatabaseHelper
+    await _dbHelper.deleteAllEvents();
     _events.clear();
     notifyListeners();
   }

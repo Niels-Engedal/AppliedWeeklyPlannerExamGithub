@@ -44,7 +44,7 @@ class MyApp extends StatelessWidget {
             hintColor: Colors.white,
             primaryColor: Colors.red,
           ),
-          theme: ThemeData.light(), // Define your light theme as well
+          theme: ThemeData.light(), // Define light theme
           home: MainPage(),
         );
       },

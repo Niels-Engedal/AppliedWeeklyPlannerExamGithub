@@ -108,7 +108,6 @@ class SettingsProvider with ChangeNotifier {
     return color.value.toRadixString(16).padLeft(8, '0').toUpperCase();
   }
 
-// Assuming you have a similar method for saving the dark theme setting
   Future<void> saveThemeSetting(bool isDarkTheme) async {
     await _dbHelper.saveSetting('isDarkTheme', isDarkTheme ? 'true' : 'false');
     loadSettings();

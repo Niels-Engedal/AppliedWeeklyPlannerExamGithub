@@ -30,7 +30,6 @@ class TagProvider with ChangeNotifier {
   // Link tags with an event
   Future<void> linkTagsToEvent(int eventId, List<Tag> tags) async {
     await _dbHelper.linkEventAndTags(eventId, tags);
-    // You might want to reload tags or perform other updates here
     notifyListeners();
   }
 
@@ -41,9 +40,7 @@ class TagProvider with ChangeNotifier {
   }
 
   // Update a tag in the database
-  // This method assumes you have a corresponding updateTag method in DatabaseHelper
   Future<void> updateTag(Tag tagToUpdate) async {
-    // Your DatabaseHelper will need an update method for tags
     await _dbHelper.updateTag(tagToUpdate);
     // Reload or update the local tags list as needed
     await loadTagsFromDatabase();
@@ -52,7 +49,6 @@ class TagProvider with ChangeNotifier {
 
   // Delete a tag from the database
   Future<void> deleteTag(int tagId) async {
-    // Your DatabaseHelper will need a delete method for tags
     await _dbHelper.deleteTag(tagId);
     // Reload or update the local tags list as needed
     await loadTagsFromDatabase();
