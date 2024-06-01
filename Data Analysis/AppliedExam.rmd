@@ -1,0 +1,595 @@
+---
+title: "Applied Data"
+author: "Frede, Niels, Sofia"
+date: "2024-05-01"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pacman)
+pacman::p_load(tidyverse, ggplot2)
+
+# load data
+applied_data <- read.csv("/Users/sofiascharf-matthiesen/Downloads/Applied Cognitive Science 5.csv")
+
+head(applied_data)
+
+# get column names
+colnames(applied_data)
+
+# rename the column names to a shorter one and save that as a new dataframe
+colnames(applied_data)[c(1:37)] <- c("Time", "Age", "Gender", "Occupation", "ADHD", "P_tools", "Often_p_tools", "P_valuable", "P_habit_difficult", "P_procrastinate", "P_frustration", "NP_no_need", "NP_idk", "WB_use", "WB_plan", "WB_like", "BP_use", "BP_plan", "BP_like", "CC_use", "CC_plan", "CC_like", "APP_use", "APP_plan", "APP_like", "STATS_use", "STATS_plan", "STATS_like", "POP_use", "POP_plan", "POP_like", "STAPP_use", "STAPP_plan", "STAPP_like", "STAPP_STAPP", "SUGGESTIONS", "FLAWS")
+
+# check
+head(colnames(applied_data))
+
+# save as new csv-file
+#write.csv(applied_data, "/Users/niels/Downloads/Applied_renamed_data_66.csv", row.names = FALSE)
+
+```
+
+# Apply numerical values to agree data
+```{r apply numerical values to agree data}
+# Vector of expected responses
+expected_responses <- c("Strongly disagree", "Disagree", "Neither disagree nor agree", "Agree", "Strongly agree")
+
+# Ensure expected_responses is treated as a set
+expected_responses_set <- sort(unique(expected_responses))
+
+contains_only_responses <- function(column) {
+  # Filter out empty and NA values
+  valid_entries <- column[column != "" & !is.na(column)]
+  unique_values <- sort(unique(valid_entries))
+  
+  # Compare lengths first to avoid recycling
+  if (length(unique_values) != length(expected_responses_set)) {
+    return(FALSE)
+  }
+  
+  # Then check if all values match
+  all(unique_values == expected_responses_set)
+}
+
+for (col_name in names(applied_data)) {
+  if (contains_only_responses(applied_data[[col_name]])) {
+    print(paste("Processing column:", col_name))
+
+    # Replace empty strings with NA
+    applied_data[[col_name]][applied_data[[col_name]] == ""] <- NA
+
+    # Convert to factor ensuring NA handling
+    applied_data[[col_name]] <- factor(applied_data[[col_name]], levels = expected_responses, ordered = TRUE)
+    applied_data[[col_name]] <- as.integer(applied_data[[col_name]])
+  }
+}
+
+applied_data_revalued <- applied_data
+
+special_cases_column_rename_func <- function(data, column_name){
+  # Ensure column_name is character type
+  column_name <- as.character(column_name)
+  
+  # Print initial data type and summary
+  cat("Initial Data Type:", class(data[[column_name]]), "\n")
+  cat("Initial Data Summary:\n")
+  print(summary(data[[column_name]]))
+  
+  # Replace empty strings with NA. Here we need to make sure that we only change empty strings.
+  data[[column_name]][data[[column_name]] == ""] <- NA
+  
+  # It is critical to check if there are non-NA entries left after this operation.
+  if (all(is.na(data[[column_name]]))) {
+    cat("Warning: All values in", column_name, "have been converted to NA!\n")
+  } else {
+    # Convert to factor, ensuring all levels are included and ordered
+    if (!all(is.na(data[[column_name]]))) {  # Only convert if there are non-NA values
+      data[[column_name]] <- factor(data[[column_name]], levels = expected_responses, ordered = TRUE)
+      # Convert the ordered factors to integers
+      data[[column_name]] <- as.integer(data[[column_name]])
+    }
+  }
+  
+  # Print data after conversion
+  cat("Data Type After Conversion:", class(data[[column_name]]), "\n")
+  cat("Data Summary After Conversion:\n")
+  print(summary(data[[column_name]]))
+  
+  # Explicitly return the modified data
+  return(data)
+}
+
+# Apply the function and capture the modified data
+applied_data <- special_cases_column_rename_func(applied_data, "APP_like")
+
+# Save the applied file
+write.csv(applied_data, "/Users/sofiascharf-matthiesen/Downloads/Applied_revalued_renamed_data_74.csv", row.names = FALSE)
+
+
+```
+
+
+# Plotting
+```{r first run plots}
+# creating function for plots
+plot_response_distribution <- function(data, column_name) {
+  if(any(data[[column_name]] %in% 1:5)) { # columns with Likert-scale answers
+    plot_data <- as.data.frame(table(data[[column_name]]))
+    names(plot_data) <- c("Response", "Frequency")
+    
+    # Create the plot
+    p <- ggplot(plot_data, aes(x = Response, y = Frequency, fill = Response)) +
+      geom_bar(stat = "identity") +
+      geom_text(aes(label = Frequency), vjust = 1.5, color = "orange", size = 6) +
+      labs(title = paste("Response Distribution for", column_name),
+           x = "Response",
+           y = "Frequency") +
+      scale_fill_brewer(palette = "Pastel2") +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 10),
+            panel.background = element_rect(fill = "#75bac2"),
+            plot.background = element_rect(fill = "#75bac2", color = "#75bac2"))
+    
+    # Save the plot
+    file_name <- paste0("plot_", column_name, ".png")  # filename based on column name
+    ggsave(file_name, plot = p, width = 10, height = 8, units = "cm")
+    
+    return(p)  # Return the plot object in case it's needed elsewhere
+  } else {
+    print(paste("No valid data in column:", column_name))
+    return(NULL)  # Return NULL if no valid data is found
+  }
+}
+
+# Apply the function to all columns in the dataframe
+applied_plots <- lapply(names(applied_data_revalued), function(col) plot_response_distribution(applied_data, col))
+
+applied_plots
+```
+
+# Plotting ADHD
+```{r adhd pie chart}
+library(dplyr)
+library(ggplot2)
+
+# Prepare the data
+ADHD_data <- applied_data %>%
+  select(ADHD) %>%
+  group_by(ADHD) %>%
+  summarise(Count = n()) %>%
+  ungroup()
+
+# Plotting as a pie chart
+ADHD_pie_chart <- ggplot(ADHD_data, aes(x = "", y = Count, fill = ADHD)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +  # Convert the bar chart to a pie chart
+  geom_text(aes(label = Count), position = position_stack(vjust = 0.5)) +  # Add labels in the middle of slices
+  scale_fill_brewer(palette = "Pastel2") +  # Color palette
+  labs(title = "ADHD Distribution",
+       x = NULL,
+       y = NULL) +
+  theme_void() +  # Remove most non-data ink
+  theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 10),
+        plot.background = element_rect(fill = "#75bac2", color = "#75bac2"),  # Set plot background color
+        panel.background = element_rect(fill = "#75bac2", color = "#75bac2"),  # Set panel background color
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))  # Remove margins around the plot
+
+
+ggsave("ADHD_pie_chart.png", plot = ADHD_pie_chart, width = 10, height = 8, units = "cm")
+```
+
+```{r pre plots1}
+plot_response_comparison <- function(data, column_name) {
+  if (any(data[[column_name]] %in% 1:5) && "ADHD" %in% names(data)) {
+    # Create a subset for each ADHD group
+    data_yes <- data[data$ADHD == "Yes", ]
+    data_no <- data[data$ADHD == "No", ]
+    
+    # Creating a combined dataframe for plotting
+    plot_data_yes <- as.data.frame(table(factor(data_yes[[column_name]], levels = 1:5)))
+    plot_data_no <- as.data.frame(table(factor(data_no[[column_name]], levels = 1:5)))
+    
+    names(plot_data_yes) <- c("Response", "Frequency")
+    names(plot_data_no) <- c("Response", "Frequency")
+    
+    plot_data_yes$ADHD <- "Yes"
+    plot_data_no$ADHD <- "No"
+    
+    combined_plot_data <- rbind(plot_data_yes, plot_data_no)
+    
+    # Create the plot
+    p <- ggplot(combined_plot_data, aes(x = Response, y = Frequency, fill = ADHD)) +
+      geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+      geom_text(aes(label = Frequency), position = position_dodge(width = 0.9), vjust = -0.5, color = "black", size = 3.5) +
+      scale_x_discrete(limits = c("1", "2", "3", "4", "5")) +  # Ensure the order is correct
+      labs(title = paste("Response Distribution for", column_name, "by ADHD Status"),
+           x = "Response",
+           y = "Frequency") +
+      scale_fill_brewer(palette = "Pastel2") +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+            panel.background = element_rect(fill = "#d0e0e3"),
+            plot.background = element_rect(fill = "#d0e0e3", color = "#d0e0e3"))
+    
+    # Save the plot
+    file_name <- paste0("plot_comparison_", column_name, ".png")  # filename based on column name
+    ggsave(file_name, plot = p, width = 12, height = 10, units = "cm")
+    
+    return(p)  # Return the plot object in case it's needed elsewhere
+  } else {
+    print(paste("No valid data or missing 'ADHD' column in:", column_name))
+    return(NULL)  # Return NULL if no valid data is found
+  }
+}
+
+# Apply the function to all columns in the dataframe
+comparison_plots <- lapply(names(applied_data_revalued), function(col) plot_response_comparison(applied_data_revalued, col))
+
+```
+
+
+```{r prep plots2}
+# Load necessary libraries
+library(ggplot2)
+library(zip)
+
+# Define the prefix and suffix mappings
+prefix_mapping <- list(
+  WB = "Whiteboard",
+  BP = "Block-planning",
+  CC = "Colour-coding",
+  APP = "App",
+  STATS = "Statistics page",
+  POP = "Pop-up messages",
+  STAPP = "The ability to use the app without the whiteboard",
+  P = "Planning"
+)
+
+suffix_mapping <- list(
+  use = "I would use this feature",
+  plan = "This feature would help me in my planning",
+  like = "This feature would help my overall liking of the product",
+  STAPP = "I would use the app as a standalone product",
+  valuable = "I find it valuable",
+  habit_difficult = "I find it difficult creating a habit of doing it",
+  procrastinate = "I sometimes procrastinate doing it",
+  frustration = "I sometimes get frustrated while doing it"
+)
+
+# Function to create descriptive column names
+get_descriptive_name <- function(column_name) {
+  prefix <- sub("_.*", "", column_name)
+  suffix <- sub(".*_", "", column_name)
+  
+  prefix_desc <- prefix_mapping[[prefix]]
+  suffix_desc <- suffix_mapping[[suffix]]
+  
+  if (!is.null(prefix_desc) && !is.null(suffix_desc)) {
+    return(paste(prefix_desc, "-", suffix_desc))
+  } else {
+    return(column_name)
+  }
+}
+
+# Function to insert a newline character in the title if it's too long
+break_title <- function(title, max_length = 50) {
+  if (nchar(title) > max_length) {
+    words <- unlist(strsplit(title, " "))
+    half_length <- ceiling(length(words) / 2)
+    return(paste(paste(words[1:half_length], collapse = " "), "\n", paste(words[(half_length+1):length(words)], collapse = " "), sep = ""))
+  }
+  return(title)
+}
+
+# Create a directory to save plots
+dir.create("plots", showWarnings = FALSE)
+
+# Function to plot response comparison with percentages and include mean response annotations
+plot_response_comparison_percentage_mean <- function(data, column_name) {
+  # Check if the column contains valid data and if 'ADHD' column exists
+  if (any(data[[column_name]] %in% 1:5) && "ADHD" %in% names(data)) {
+    # Create subsets of data for each group based on their ADHD status
+    data_yes <- data[data$ADHD == "Yes", ]
+    data_no <- data[data$ADHD == "No", ]
+    
+    # Create frequency tables for each group and convert to dataframe
+    plot_data_yes <- as.data.frame(table(factor(data_yes[[column_name]], levels = 1:5)))
+    plot_data_no <- as.data.frame(table(factor(data_no[[column_name]], levels = 1:5)))
+    
+    # Rename the columns for clarity
+    names(plot_data_yes) <- c("Response", "Count")
+    names(plot_data_no) <- c("Response", "Count")
+    
+    # Calculate the percentage of each response category
+    plot_data_yes$Frequency <- (plot_data_yes$Count / sum(plot_data_yes$Count)) * 100
+    plot_data_no$Frequency <- (plot_data_no$Count / sum(plot_data_no$Count)) * 100
+    
+    # Calculate the mean response for each ADHD group
+    mean_yes <- mean(as.numeric(as.character(data_yes[[column_name]])), na.rm = TRUE)
+    mean_no <- mean(as.numeric(as.character(data_no[[column_name]])), na.rm = TRUE)
+    
+    # Label the data for identification in the plot
+    plot_data_yes$ADHD <- "Yes"
+    plot_data_no$ADHD <- "No"
+    
+    # Combine the datasets for plotting
+    combined_plot_data <- rbind(plot_data_yes, plot_data_no)
+    
+    # Get the descriptive name for the column
+    descriptive_name <- get_descriptive_name(column_name)
+    
+    # Break the title if it's too long
+    plot_title <- break_title(paste("Response Distribution for", descriptive_name, "by ADHD Status (%)"))
+    
+    # Create the bar plot using ggplot2
+    p <- ggplot(combined_plot_data, aes(x = Response, y = Frequency, fill = ADHD)) +
+      geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +  # Use bar geometry with identity statistic and dodge position for clarity
+      geom_text(aes(label = sprintf("%.1f%%", Frequency)), position = position_dodge(width = 0.9), vjust = -0.5, color = "black", size = 3.5) +  # Add text annotations with percentage
+      scale_x_discrete(limits = c("1", "2", "3", "4", "5")) +  # Explicitly set the order of x-axis categories
+      labs(title = plot_title,  # Use the modified title
+           subtitle = paste("Mean Response: ADHD Yes =", sprintf("%.2f", mean_yes), ", ADHD No =", sprintf("%.2f", mean_no)),
+           x = "Response",
+           y = "Percentage") +
+      scale_fill_brewer(palette = "Pastel2") +  # Set color palette
+      theme_minimal() +  # Use minimal theme for clarity
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 12.5),  # Customize plot appearance
+        plot.subtitle = element_text(hjust = 0.5, size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels for better readability
+        plot.margin = margin(20, 20, 20, 20)  # Add margin around the plot
+      )
+    
+    # Save the plot to a file in the "plots" directory
+    file_name <- paste0("plots/plot_percentage_comparison_mean_", column_name, ".png")  # Generate dynamic filename based on column name
+    ggsave(file_name, plot = p, width = 20, height = 15, units = "cm")
+    
+    # Return the plot object for further use or display
+    return(p)
+  } else {
+    # Print a message if the necessary data or column is missing
+    print(paste("No valid data or missing 'ADHD' column in:", column_name))
+    return(NULL)  # Return NULL if conditions are not met
+  }
+}
+
+# Apply the function to all columns in the dataframe to generate plots
+mean_percentage_comparison_plots <- lapply(names(applied_data_revalued), function(col) plot_response_comparison_percentage_mean(applied_data_revalued, col))
+
+# Create a zip file containing all the plots
+zip::zip("plots.zip", files = list.files("plots", full.names = TRUE))
+
+# Open the directory containing the zip file (works in RStudio on Windows)
+browseURL("plots.zip")
+
+
+```
+```{r percentage comparison}
+mean_percentage_comparison_plots
+```
+```{r shaprio wilk}
+# Function to perform Shapiro-Wilk tests for normality on response data
+perform_shapiro_tests <- function(data) {
+  # Prepare a list to store test results
+  shapiro_results <- list()
+
+  # Iterate over each column in the dataframe
+  for (column_name in names(data)) {
+    # Check if the column contains numeric data suitable for normality testing
+    if (any(data[[column_name]] %in% 1:5)) {
+      # Subset data for each ADHD group
+      group_yes <- data[data$ADHD == "Yes", column_name, drop = FALSE]
+      group_no <- data[data$ADHD == "No", column_name, drop = FALSE]
+      
+      # Convert the subset data to numeric, omitting NA values
+      numeric_yes = as.numeric(as.character(na.omit(group_yes[[column_name]])))
+      numeric_no = as.numeric(as.character(na.omit(group_no[[column_name]])))
+
+      # Check for NAs and only proceed if there are no NAs
+      if (!any(is.na(numeric_yes)) && !any(is.na(numeric_no))) {
+        # Initialize placeholders for results
+        test_result_yes <- NULL
+        test_result_no <- NULL
+        
+        # Check sample sizes and perform the Shapiro-Wilk test if the size is within allowable limits
+        if (length(numeric_yes) >= 3 && length(numeric_yes) <= 5000) {
+          test_result_yes <- shapiro.test(numeric_yes)
+        } else {
+          test_result_yes <- list(statistic = NA, p.value = NA, message = "Sample size out of bounds")
+        }
+        
+        if (length(numeric_no) >= 3 && length(numeric_no) <= 5000) {
+          test_result_no <- shapiro.test(numeric_no)
+        } else {
+          test_result_no <- list(statistic = NA, p.value = NA, message = "Sample size out of bounds")
+        }
+
+        # Store the results using the column name as the key
+        shapiro_results[[column_name]] <- list(ADHD = test_result_yes, Control = test_result_no)
+      }
+    }
+  }
+
+  # Return the list of Shapiro-Wilk test results
+  return(shapiro_results)
+}
+
+# Apply the function to the dataframe
+shapiro_results <- perform_shapiro_tests(applied_data)
+
+```
+
+
+```{r mann whitney}
+# Function to perform Mann-Whitney U tests on response data between ADHD groups
+perform_mann_whitney_tests <- function(data) {
+  # Prepare a list to store test results
+  mann_whitney_results <- list()
+  
+  # Iterate over each column in the dataframe
+  for (column_name in names(data)) {
+    # Check if the column contains numeric data suitable for the Mann-Whitney U test
+    if (any(data[[column_name]] %in% 1:5)) {
+      # Subset data for each ADHD group
+      group_yes <- data[data$ADHD == "Yes", column_name, drop = FALSE]
+      group_no <- data[data$ADHD == "No", column_name, drop = FALSE]
+      
+      # Perform the Mann-Whitney U test comparing the two groups
+      # na.omit is used to remove NA values that can affect the test
+      test_result <- wilcox.test(as.numeric(as.character(na.omit(group_yes[[1]]))), 
+                                 as.numeric(as.character(na.omit(group_no[[1]]))),
+                                 alternative = "two.sided",  # You can change this to "less" or "greater" if needed
+                                 exact = FALSE)  # Use approximation rather than exact calculation if data size is large
+      
+      # Store the result using the column name as the key
+      mann_whitney_results[[column_name]] <- test_result
+    }
+  }
+  
+  # Return the list of Mann-Whitney U test results
+  return(mann_whitney_results)
+}
+
+# Apply the function to the applied_data dataframe
+mann_whitney_results <- perform_mann_whitney_tests(applied_data_revalued)
+
+# To view the results, you can print them or access specific results like this:
+# print(mann_whitney_results[["SomeColumnName"]])  # Replace SomeColumnName with an actual column name
+
+mann_whitney_results
+```
+
+```{r mean plots}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+# Define the prefix and suffix mappings
+prefix_mapping <- list(
+  WB = "Whiteboard",
+  BP = "Block-planning",
+  CC = "Colour-coding",
+  APP = "App",
+  STATS = "Statistics page",
+  POP = "Pop-up MSGs",
+  STAPP = "Standalone App"
+)
+
+suffix_mapping <- list(
+  use = "I would use this feature",
+  plan = "This feature would help me in my planning",
+  like = "This feature would help my overall liking of the product"
+)
+
+# Function to create descriptive column names
+get_prefix_name <- function(column_name) {
+  prefix <- sub("_.*", "", column_name)
+  prefix_desc <- prefix_mapping[[prefix]]
+  
+  if (!is.null(prefix_desc)) {
+    return(prefix_desc)
+  } else {
+    return(column_name)
+  }
+}
+
+# Function to translate the suffix to a descriptive title
+get_suffix_description <- function(suffix) {
+  if (suffix %in% names(suffix_mapping)) {
+    return(suffix_mapping[[suffix]])
+  } else {
+    return(suffix)
+  }
+}
+
+# Function to plot mean responses for specified suffixes in column names
+plot_mean_responses <- function(data, suffix_list) {
+  # Loop through each suffix to create plots
+  for (suffix in suffix_list) {
+    # Filter columns that end with the current suffix
+    relevant_columns <- names(data)[grepl(paste0(suffix, "$"), names(data))]
+    
+    # Prepare data frames to store mean responses for each group
+    adhd_mean_responses <- data.frame(Column = character(), Mean = numeric())
+    control_mean_responses <- data.frame(Column = character(), Mean = numeric())
+    
+    # Calculate mean responses for each relevant column
+    for (column_name in relevant_columns) {
+      # Extract data for each group
+      adhd_data <- data[data$ADHD == "Yes", column_name, drop = FALSE]
+      control_data <- data[data$ADHD == "No", column_name, drop = FALSE]
+      
+      # Calculate means
+      adhd_mean <- mean(as.numeric(as.character(na.omit(adhd_data[[1]]))), na.rm = TRUE)
+      control_mean <- mean(as.numeric(as.character(na.omit(control_data[[1]]))), na.rm = TRUE)
+      
+      # Append to the data frames
+      adhd_mean_responses <- rbind(adhd_mean_responses, data.frame(Column = column_name, Mean = adhd_mean))
+      control_mean_responses <- rbind(control_mean_responses, data.frame(Column = column_name, Mean = control_mean))
+    }
+    
+    # Translate column names for the y-axis labels
+    adhd_mean_responses$Column <- sapply(adhd_mean_responses$Column, get_prefix_name)
+    control_mean_responses$Column <- sapply(control_mean_responses$Column, get_prefix_name)
+    
+    # Add ranking numbers to y-axis labels
+    adhd_mean_responses <- adhd_mean_responses %>%
+      arrange(desc(Mean)) %>%
+      mutate(Rank = row_number(), Column = paste(Rank, "=", Column))
+    
+    control_mean_responses <- control_mean_responses %>%
+      arrange(desc(Mean)) %>%
+      mutate(Rank = row_number(), Column = paste(Rank, "=", Column))
+    
+    # Reorder the factor levels based on Rank in descending order
+    adhd_mean_responses$Column <- factor(adhd_mean_responses$Column, levels = rev(adhd_mean_responses$Column))
+    control_mean_responses$Column <- factor(control_mean_responses$Column, levels = rev(control_mean_responses$Column))
+    
+    # Translate the suffix
+    suffix_desc <- get_suffix_description(sub("_", "", suffix))
+    
+    # Create a horizontal bar plot for ADHD group
+    p_adhd <- ggplot(adhd_mean_responses, aes(x = Mean, y = Column)) +
+      geom_bar(stat = "identity", fill = "#FDCDAC") +
+      geom_text(aes(label = sprintf("%.1f", Mean)), hjust = -0.3, size = 3) +  # Add mean value labels
+      labs(title = paste("Mean Response for ADHD Group"),
+           x = "",
+           y = suffix_desc, 
+           size = 7) +
+      xlim(0, 5) +  # Set x-axis limits
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 9),
+            axis.text.x = element_text(size = 8),
+            plot.margin = margin(t = 20, r = 30, b = 20, l = 20))
+    
+    # Create a horizontal bar plot for Control group
+    p_control <- ggplot(control_mean_responses, aes(x = Mean, y = Column)) +
+      geom_bar(stat = "identity", fill = "#B3E2CD") +
+      geom_text(aes(label = sprintf("%.1f", Mean)), hjust = -0.3, size = 3) +  # Add mean value labels
+      labs(title = paste("Mean Response for Control Group"),
+           x = "",
+           y = suffix_desc, 
+           size = 7) +
+      xlim(0, 5) +  # Set x-axis limits
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 9),
+            axis.text.x = element_text(size = 8),
+            plot.margin = margin(t = 20, r = 30, b = 20, l = 20))
+    
+    # Arrange the two plots in one window using gridExtra with wider dimensions and smaller heights
+    combined_plot <- grid.arrange(p_adhd, p_control, ncol = 2, widths = c(3, 3), heights = c(0.5))
+    
+    # Save the combined plot
+    ggsave(paste0("mean_response_", suffix, ".png"), plot = combined_plot, width = 14, height = 7, dpi = 300)
+  }
+}
+
+# Apply the function with the specified suffixes
+plot_mean_responses(applied_data_revalued, c("_use", "_plan", "_like"))
+
+
+```
+
+
+
+
